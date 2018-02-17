@@ -7,8 +7,12 @@ const WebSocket = require('ws');
 
 const Channels = require('./lib/Channels');
 const GoogleAlbumArtRetriever = require('./lib/AlbumArtSource/GooglePlayMusic');
+const Discogs = require('./lib/AlbumArtSource/Discogs');
 
 let ws = new WebSocket('ws://localhost:5672');
+
+const config = require('../config.json')
+const discog = new Discogs(config.discog.consumerKey, config.discog.consumerSecret);
 
 const compositeInCenter = (baseImage, overlayImage) => {
     baseImage.composite(overlayImage,
@@ -42,6 +46,9 @@ ws.onmessage = e => {
 
 const generateWallpaper = (data) => {
     async.tryEach([
+        function getDiscogImage(callback) {
+            discog.getAlbumImage(data.payload, callback);
+        },
         function getLowQualityImage(callback) {
             GoogleAlbumArtRetriever.getAlbumImage(data.payload, callback);
         }
