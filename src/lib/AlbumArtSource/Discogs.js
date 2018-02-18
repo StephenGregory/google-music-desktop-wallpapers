@@ -6,13 +6,9 @@ module.exports = function (consumerKey, consumerSecret) {
 
     const createGetReleaseImageFunction = (releaseId) => {
         return (callback) => {
-            db.getRelease(releaseId, (error, response, limitDetails) => {
+            db.getRelease(releaseId, (error, response) => {
                 if (error) {
                     return callback(error);
-                }
-
-                if (limitDetails.remaining == 0) {
-                    return callback(new Error('Discogs request limit has been reached for the time window'));
                 }
 
                 if (!response.images) {
@@ -43,12 +39,9 @@ module.exports = function (consumerKey, consumerSecret) {
                         type: 'release'
                     };
 
-                    db.search(query, params, (error, response, limitDetails) => {
+                    db.search(query, params, (error, response) => {
                         if (error) {
                             return callback(error);
-                        }
-                        if (limitDetails.remaining == 0) {
-                            return callback(new Error('Discogs request limit has been reached'));
                         }
 
                         if (response.results.length === 0) {
@@ -70,12 +63,9 @@ module.exports = function (consumerKey, consumerSecret) {
                     const params = {
                         type: 'release'
                     };
-                    db.search(query, params, (error, response, limitDetails) => {
+                    db.search(query, params, (error, response) => {
                         if (error) {
                             return callback(error);
-                        }
-                        if (limitDetails.remaining == 0) {
-                            return callback(new Error('Discogs request limit has been reached'));
                         }
 
                         if (response.results.length === 0) {
