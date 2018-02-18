@@ -46,7 +46,7 @@ ws.onmessage = e => {
                 }
                 const baseWallpaper = new Jimp(Screen.main().width, Screen.main().height);
 
-                const albumArt = new Jimp(imageBuffer, _ => { });
+                const albumArt = new Jimp(imageBuffer, () => { });
 
                 const focusedAlbumArt = albumArt.clone();
 
@@ -64,7 +64,7 @@ ws.onmessage = e => {
 
                 const destination = path.join(wallpaperOutputDir, 'wallpaper.png');
 
-                baseWallpaper.write(destination, _ => {
+                baseWallpaper.write(destination, () => {
                     console.debug(new Date().toISOString(), 'Wallpaper written to', destination);
                 });
             });
