@@ -15,8 +15,6 @@ module.exports = function (consumerKey, consumerSecret) {
                     return callback(new Error('Discogs request limit has been reached for the time window'));
                 }
 
-                console.debug('Getting release result', response);
-
                 if (!response.images) {
                     return callback(new Error('Release has no images'));
                 }
@@ -46,8 +44,6 @@ module.exports = function (consumerKey, consumerSecret) {
                     };
 
                     db.search(query, params, (error, response, limitDetails) => {
-                        console.debug(response);
-                        console.debug('limitDetails', limitDetails);
                         if (error) {
                             return callback(error);
                         }
@@ -75,8 +71,6 @@ module.exports = function (consumerKey, consumerSecret) {
                         type: 'release'
                     };
                     db.search(query, params, (error, response, limitDetails) => {
-                        console.debug(response);
-                        console.debug('limitDetails', limitDetails);
                         if (error) {
                             return callback(error);
                         }
@@ -85,14 +79,12 @@ module.exports = function (consumerKey, consumerSecret) {
                         }
 
                         if (response.results.length === 0) {
-                            console.info('No album releases found on Discogs');
                             return callback(new Error('No album releases found on Discogs'));
                         }
 
                         const releaseIds = getReleaseIdsContaining(response, payload.artist, payload.album);
 
                         if (releaseIds.length === 0) {
-                            console.info('No album releases found on Discogs');
                             return callback(new Error('No album releases found on Discogs'));
                         }
                         return callback(null, releaseIds);
@@ -100,19 +92,20 @@ module.exports = function (consumerKey, consumerSecret) {
                 }
             ], (error, releaseIds) => {
                 if (error) {
+                    console.error(error);
                     return callback(error);
                 }
                 const releaseFunctions = releaseIds.map(id => createGetReleaseImageFunction(id));
                 async.tryEach(releaseFunctions,
                     (err, imageUrl) => {
                         if (err) {
-                            console.error('Could not get release information for the releases found on Discogs');
+                            console.error('Could not get release information for the releases found on Discogs', err);
                             return callback(err);
                         }
 
                         db.getImage(imageUrl, (err, content) => {
                             if (err) {
-                                console.error('Could not get release image on Discogs');
+                                console.error('Could not get release image on Discogs', err);
                                 return callback(err);
                             }
                             return callback(null, new Buffer(content, 'binary'));
