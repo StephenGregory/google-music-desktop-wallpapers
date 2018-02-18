@@ -4,7 +4,7 @@ const Discogs = require('disconnect').Client;
 module.exports = function (consumerKey, consumerSecret) {
     var db = new Discogs({ consumerKey: consumerKey, consumerSecret: consumerSecret }).database();
 
-    const getReleaseImageFunction = (releaseId) => {
+    const createGetReleaseImageFunction = (releaseId) => {
         return (callback) => {
             db.getRelease(releaseId, (error, response, limitDetails) => {
                 if (error) {
@@ -51,8 +51,17 @@ module.exports = function (consumerKey, consumerSecret) {
                     return callback(new Error('Nothing found on Discogs'));
                 }
 
-                const releaseIds = response.results.map(r => r.id);
-                const releaseFunctions = releaseIds.map(id => getReleaseImageFunction(id));
+                const releaseIds = response.results
+                    .filter(r => r.title.toLowerCase().indexOf(payload.artist.toLowerCase()) > -1)
+                    .filter(r => r.title.toLowerCase().indexOf(payload.album.toLowerCase()) > -1)
+                    .map(r => r.id);
+
+                if (!releaseIds || releaseIds.length === 0) {
+                    console.info('Nothing found on Discogs');
+                    return callback(new Error('Nothing found on Discogs'));
+                }
+
+                const releaseFunctions = releaseIds.map(id => createGetReleaseImageFunction(id));
                 async.tryEach(releaseFunctions,
                     (err, imageUrl) => {
                         console.error('Could not get release information for anything found on Discogs');
