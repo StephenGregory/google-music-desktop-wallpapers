@@ -12,7 +12,7 @@ module.exports = function (consumerKey, consumerSecret) {
                 }
 
                 if (limitDetails.remaining == 0) {
-                    return callback(new Error('Discogs request limit has been reached'));
+                    return callback(new Error('Discogs request limit has been reached for the time window'));
                 }
 
                 console.debug('Getting release result', response);
@@ -47,8 +47,8 @@ module.exports = function (consumerKey, consumerSecret) {
                 }
 
                 if (response.results.length === 0) {
-                    console.info('Nothing found on Discogs');
-                    return callback(new Error('Nothing found on Discogs'));
+                    console.info('No album releases found on Discogs');
+                    return callback(new Error('No album releases found on Discogs'));
                 }
 
                 const releaseIds = response.results
@@ -57,24 +57,23 @@ module.exports = function (consumerKey, consumerSecret) {
                     .map(r => r.id);
 
                 if (!releaseIds || releaseIds.length === 0) {
-                    console.info('Nothing found on Discogs');
-                    return callback(new Error('Nothing found on Discogs'));
+                    console.info('No album releases found on Discogs');
+                    return callback(new Error('No album releases found on Discogs'));
                 }
 
                 const releaseFunctions = releaseIds.map(id => createGetReleaseImageFunction(id));
                 async.tryEach(releaseFunctions,
                     (err, imageUrl) => {
-                        console.error('Could not get release information for anything found on Discogs');
                         if (err) {
+                            console.error('Could not get release information for the releases found on Discogs');
                             return callback(err);
                         }
 
                         db.getImage(imageUrl, (err, content) => {
                             if (err) {
-                                console.error('Could not get image on Discogs');
+                                console.error('Could not get release image on Discogs');
                                 return callback(err);
                             }
-                            console.info('Got image from Discogs');
                             return callback(null, new Buffer(content, 'binary'));
                         });
                     });
