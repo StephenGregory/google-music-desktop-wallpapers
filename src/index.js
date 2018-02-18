@@ -1,5 +1,6 @@
 const async = require('async');
 const Jimp = require('jimp');
+const debounce = require('debounce');
 const path = require('path');
 const Screen = require('screen-info');
 const WebSocket = require('ws');
@@ -35,7 +36,7 @@ ws.onmessage = e => {
     }
 
     if (data.channel === Channels.Track) {
-        generateWallpaper(data);
+        debouncedGenerateWallpaper(data);
     }
 };
 
@@ -73,4 +74,6 @@ const generateWallpaper = (data) => {
                 console.debug(new Date().toISOString(), 'Wallpaper written to', destination);
             });
         });
-}
+};
+
+const debouncedGenerateWallpaper = debounce(generateWallpaper, 5000);
