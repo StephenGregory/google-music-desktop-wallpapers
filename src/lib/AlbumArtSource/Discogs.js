@@ -29,38 +29,78 @@ module.exports = function (consumerKey, consumerSecret) {
 
     return {
         getAlbumImage: (payload, callback) => {
-            const query = null;
-            const params = {
-                artist: payload.artist,
-                release_title: payload.album,
-                type: 'release'
-            };
+            async.tryEach([
+                function findReleaseBySpecificSearch(callback) {
+                    const query = null;
+                    const params = {
+                        artist: payload.artist,
+                        release_title: payload.album,
+                        type: 'release'
+                    };
 
-            db.search(query, params, (error, response, limitDetails) => {
-                console.debug(response);
-                console.debug('limitDetails', limitDetails);
+                    db.search(query, params, (error, response, limitDetails) => {
+                        console.debug(response);
+                        console.debug('limitDetails', limitDetails);
+                        if (error) {
+                            return callback(error);
+                        }
+                        if (limitDetails.remaining == 0) {
+                            return callback(new Error('Discogs request limit has been reached'));
+                        }
+
+                        if (response.results.length === 0) {
+                            console.info('No album releases found on Discogs');
+                            return callback(new Error('No album releases found on Discogs'));
+                        }
+
+                        const releaseIds = response.results
+                            .filter(r => r.title.toLowerCase().indexOf(payload.artist.toLowerCase()) > -1)
+                            .filter(r => r.title.toLowerCase().indexOf(payload.album.toLowerCase()) > -1)
+                            .map(r => r.id);
+
+                        if (!releaseIds || releaseIds.length === 0) {
+                            console.info('No album releases found on Discogs');
+                            return callback(new Error('No album releases found on Discogs'));
+                        }
+                        return callback(null, releaseIds);
+                    });
+                },
+                function findReleaseByBroadSearch(callback) {
+                    const query = payload.artist + ' ' + payload.album;
+                    const params = {
+                        type: 'release'
+                    };
+                    db.search(query, params, (error, response, limitDetails) => {
+                        console.debug(response);
+                        console.debug('limitDetails', limitDetails);
+                        if (error) {
+                            return callback(error);
+                        }
+                        if (limitDetails.remaining == 0) {
+                            return callback(new Error('Discogs request limit has been reached'));
+                        }
+
+                        if (response.results.length === 0) {
+                            console.info('No album releases found on Discogs');
+                            return callback(new Error('No album releases found on Discogs'));
+                        }
+
+                        const releaseIds = response.results
+                            .filter(r => r.title.toLowerCase().indexOf(payload.artist.toLowerCase()) > -1)
+                            .filter(r => r.title.toLowerCase().indexOf(payload.album.toLowerCase()) > -1)
+                            .map(r => r.id);
+
+                        if (!releaseIds || releaseIds.length === 0) {
+                            console.info('No album releases found on Discogs');
+                            return callback(new Error('No album releases found on Discogs'));
+                        }
+                        return callback(null, releaseIds);
+                    });
+                }
+            ], (error, releaseIds) => {
                 if (error) {
                     return callback(error);
                 }
-                if (limitDetails.remaining == 0) {
-                    return callback(new Error('Discogs request limit has been reached'));
-                }
-
-                if (response.results.length === 0) {
-                    console.info('No album releases found on Discogs');
-                    return callback(new Error('No album releases found on Discogs'));
-                }
-
-                const releaseIds = response.results
-                    .filter(r => r.title.toLowerCase().indexOf(payload.artist.toLowerCase()) > -1)
-                    .filter(r => r.title.toLowerCase().indexOf(payload.album.toLowerCase()) > -1)
-                    .map(r => r.id);
-
-                if (!releaseIds || releaseIds.length === 0) {
-                    console.info('No album releases found on Discogs');
-                    return callback(new Error('No album releases found on Discogs'));
-                }
-
                 const releaseFunctions = releaseIds.map(id => createGetReleaseImageFunction(id));
                 async.tryEach(releaseFunctions,
                     (err, imageUrl) => {
