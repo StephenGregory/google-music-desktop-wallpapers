@@ -4,7 +4,6 @@ module.exports = {
     PlayState: 'playState',
     Track: 'track',
     Queue: 'queue',
-    Volume: 'volume',
     Lyrics: 'lyrics',
     Library: 'library',
     Rating: 'rating',
