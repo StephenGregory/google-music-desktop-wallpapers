@@ -27,6 +27,13 @@ module.exports = function (consumerKey, consumerSecret) {
         }
     };
 
+    const getReleaseIdsContaining = (searchResult, artist, album) => {
+        return searchResult.results
+            .filter(r => r.title.toLowerCase().indexOf(artist.toLowerCase()) > -1)
+            .filter(r => r.title.toLowerCase().indexOf(album.toLowerCase()) > -1)
+            .map(r => r.id)
+    };
+
     return {
         getAlbumImage: (payload, callback) => {
             async.tryEach([
@@ -53,12 +60,9 @@ module.exports = function (consumerKey, consumerSecret) {
                             return callback(new Error('No album releases found on Discogs'));
                         }
 
-                        const releaseIds = response.results
-                            .filter(r => r.title.toLowerCase().indexOf(payload.artist.toLowerCase()) > -1)
-                            .filter(r => r.title.toLowerCase().indexOf(payload.album.toLowerCase()) > -1)
-                            .map(r => r.id);
+                        const releaseIds = getReleaseIdsContaining(response, payload.artist, payload.album);
 
-                        if (!releaseIds || releaseIds.length === 0) {
+                        if (releaseIds.length === 0) {
                             console.info('No album releases found on Discogs');
                             return callback(new Error('No album releases found on Discogs'));
                         }
@@ -85,12 +89,9 @@ module.exports = function (consumerKey, consumerSecret) {
                             return callback(new Error('No album releases found on Discogs'));
                         }
 
-                        const releaseIds = response.results
-                            .filter(r => r.title.toLowerCase().indexOf(payload.artist.toLowerCase()) > -1)
-                            .filter(r => r.title.toLowerCase().indexOf(payload.album.toLowerCase()) > -1)
-                            .map(r => r.id);
+                        const releaseIds = getReleaseIdsContaining(response, payload.artist, payload.album);
 
-                        if (!releaseIds || releaseIds.length === 0) {
+                        if (releaseIds.length === 0) {
                             console.info('No album releases found on Discogs');
                             return callback(new Error('No album releases found on Discogs'));
                         }
