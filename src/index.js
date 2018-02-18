@@ -1,5 +1,6 @@
 const async = require('async');
 const Jimp = require('jimp');
+const debounce = require('debounce');
 const path = require('path');
 const Screen = require('screen-info');
 const WebSocket = require('ws');
@@ -35,38 +36,44 @@ ws.onmessage = e => {
     }
 
     if (data.channel === Channels.Track) {
-        async.tryEach([
-            function getLowQualityImage(callback) {
-                GoogleAlbumArtRetriever.getAlbumImage(data.payload, callback);
-            }
-        ],
-            function (err, imageBuffer) {
-                if (err) {
-                    console.error('Could not get an image for this one', err);
-                }
-                const baseWallpaper = new Jimp(Screen.main().width, Screen.main().height);
-
-                const albumArt = new Jimp(imageBuffer, () => { });
-
-                const focusedAlbumArt = albumArt.clone();
-
-                if (isImageLarger(baseWallpaper, focusedAlbumArt)) {
-                    focusedAlbumArt.scaleToFit(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height);
-                }
-
-                const outOfFocusAlbumArt = albumArt.clone()
-                    .cover(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height)
-                    .scale(1.5)
-                    .blur(20);
-
-                compositeInCenter(baseWallpaper, outOfFocusAlbumArt);
-                compositeInCenter(baseWallpaper, focusedAlbumArt);
-
-                const destination = path.join(wallpaperOutputDir, 'wallpaper.png');
-
-                baseWallpaper.write(destination, () => {
-                    console.debug(new Date().toISOString(), 'Wallpaper written to', destination);
-                });
-            });
+        debouncedGenerateWallpaper(data);
     }
 };
+
+const generateWallpaper = (data) => {
+    async.tryEach([
+        function getLowQualityImage(callback) {
+            GoogleAlbumArtRetriever.getAlbumImage(data.payload, callback);
+        }
+    ],
+        function (err, imageBuffer) {
+            if (err) {
+                console.error('Could not get an image for this one', err);
+            }
+            const baseWallpaper = new Jimp(Screen.main().width, Screen.main().height);
+
+            const albumArt = new Jimp(imageBuffer, () => { });
+
+            const focusedAlbumArt = albumArt.clone();
+
+            if (isImageLarger(baseWallpaper, focusedAlbumArt)) {
+                focusedAlbumArt.scaleToFit(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height);
+            }
+
+            const outOfFocusAlbumArt = albumArt.clone()
+                .cover(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height)
+                .scale(1.5)
+                .blur(20);
+
+            compositeInCenter(baseWallpaper, outOfFocusAlbumArt);
+            compositeInCenter(baseWallpaper, focusedAlbumArt);
+
+            const destination = path.join(wallpaperOutputDir, 'wallpaper.png');
+
+            baseWallpaper.write(destination, () => {
+                console.debug(new Date().toISOString(), 'Wallpaper written to', destination);
+            });
+        });
+};
+
+const debouncedGenerateWallpaper = debounce(generateWallpaper, 5000);
