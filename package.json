@@ -1,6 +1,6 @@
 {
   "name": "google-music-desktop-wallpapers",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generates wallpapers while listening to Google Play Music",
   "main": "src/index.js",
   "scripts": {
