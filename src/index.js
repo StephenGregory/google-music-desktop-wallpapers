@@ -1,4 +1,5 @@
 const async = require('async');
+const raptorArgs = require('raptor-args');
 const Jimp = require('jimp');
 const debounce = require('debounce');
 const path = require('path');
@@ -7,8 +8,79 @@ const WebSocket = require('ws');
 
 const Channels = require('./lib/Channels');
 const GoogleAlbumArtRetriever = require('./lib/AlbumArtSource/GooglePlayMusic');
+const Discogs = require('./lib/AlbumArtSource/Discogs');
 
 let ws = new WebSocket('ws://localhost:5672');
+
+const options = raptorArgs.createParser({
+    '--help -h': {
+        type: 'string',
+        description: 'Show this help message'
+    },
+    '--discogsConsumerKey': {
+        type: 'string',
+        description: 'Discogs consumer key'
+    },
+    '--discogsConsumerSecret': {
+        type: 'string',
+        description: 'Discogs consumer secret'
+    }
+})
+    .usage('Usage: npm start [-- [options]]')
+    .example('Generate wallpaper from low quality Google Music album thumbail',
+        'npm start')
+    .example('Generate wallpaper from Discogs album art as primary source and Google Music thumbnail as secondary source',
+        'npm start -- --discogsConsumerKey KEY --discogsConsumerSecret SECRET')
+    .validate(function (result) {
+        if (result.help) {
+            this.printUsage();
+            process.exit(0);
+        }
+
+        if (result.discogsConsumerKey && result.discogsConsumerKey) {
+            const invalidCharacters = new RegExp('[0-9 ]');
+
+            if (invalidCharacters.test(result.discogsConsumerKey)) {
+                console.error('--discogsConsumerKey cannot contain numbers or spaces');
+                this.printUsage();
+                process.exit(1);
+            }
+
+            if (invalidCharacters.test(result.discogsConsumerSecret)) {
+                console.error('--discogsConsumerSecret cannot contain numbers or spaces');
+                this.printUsage();
+                process.exit(1);
+            }
+        }
+    })
+    .onError(function (err) {
+        console.error(err);
+        this.printUsage();
+        process.exit(1);
+    })
+    .parse();
+
+
+let albumArtSources = [];
+
+if (options.discogsConsumerKey && options.discogsConsumerSecret) {
+    console.info(new Date().toISOString(), 'Adding discogs source');
+    const discog = new Discogs(options.discogsConsumerKey, options.discogsConsumerSecret);
+    albumArtSources.push(discog.getAlbumImage.bind(discog));
+}
+else if (options.discogsConsumerKey || options.discogsConsumerSecret) {
+    console.warn(new Date().toISOString(), 'Not adding discogs source. Both key and secret must be passed in.');
+}
+
+
+console.log(new Date().toISOString(), 'Adding Google thumbnail source');
+albumArtSources.push(GoogleAlbumArtRetriever.getAlbumImage.bind(GoogleAlbumArtRetriever));
+
+const wrapAlbumArtFuncs = (albumArtSourceFunc, payload) => {
+    return (callback) => {
+        albumArtSourceFunc(payload, callback);
+    }
+};
 
 const compositeInCenter = (baseImage, overlayImage) => {
     baseImage.composite(overlayImage,
@@ -41,11 +113,10 @@ ws.onmessage = e => {
 };
 
 const generateWallpaper = (data) => {
-    async.tryEach([
-        function getLowQualityImage(callback) {
-            GoogleAlbumArtRetriever.getAlbumImage(data.payload, callback);
-        }
-    ],
+
+    const tryEachFuncs = albumArtSources.map(s => wrapAlbumArtFuncs(s, data.payload));
+
+    async.tryEach(tryEachFuncs,
         function (err, imageBuffer) {
             if (err) {
                 console.error('Could not get an image for this one', err);
