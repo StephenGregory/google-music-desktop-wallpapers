@@ -26,7 +26,11 @@ const options = raptorArgs.createParser({
         description: 'Discogs consumer secret'
     }
 })
-    .usage('Usage: npm start [options]')
+    .usage('Usage: npm start [-- [options]]')
+    .example('Generate wallpaper from low quality Google Music album thumbail',
+        'npm start')
+    .example('Generate wallpaper from Discogs album art as primary source and Google Music thumbnail as secondary source',
+        'npm start -- --discogsConsumerKey KEY --discogsConsumerSecret SECRET')
     .validate(function (result) {
         if (result.help) {
             this.printUsage();
