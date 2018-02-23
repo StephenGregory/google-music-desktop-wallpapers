@@ -13,6 +13,11 @@
     "music",
     "wallpapers"
   ],
+  "bugs": "https://github.com/StephenGregory/google-music-desktop-wallpapers/issues",
+  "repository": {
+    "type": "git",
+    "url": "github:StephenGregory/google-music-desktop-wallpapers"
+  },
   "author": "Stephen Gregory",
   "license": "MIT",
   "dependencies": {
