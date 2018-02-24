@@ -46,14 +46,14 @@ module.exports = function (consumerKey, consumerSecret) {
                         }
 
                         if (response.results.length === 0) {
-                            log.info('No album releases found on Discogs');
+                            log.debug('No album releases found on Discogs');
                             return callback(new Error('No album releases found on Discogs'));
                         }
 
                         const releaseIds = getReleaseIdsContaining(response, payload.artist, payload.album);
 
                         if (releaseIds.length === 0) {
-                            log.info('No album releases found on Discogs');
+                            log.debug('No album releases found on Discogs');
                             return callback(new Error('No album releases found on Discogs'));
                         }
                         return callback(null, releaseIds);
@@ -90,7 +90,7 @@ module.exports = function (consumerKey, consumerSecret) {
                 async.tryEach(releaseFunctions,
                     (err, imageUrl) => {
                         if (err) {
-                            log.error('Could not get release information for the releases found on Discogs', err);
+                            log.warn('Could not get release information for the releases found on Discogs', err);
                             return callback(err);
                         }
 
