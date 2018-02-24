@@ -42,12 +42,14 @@ const options = raptorArgs.createParser({
             const invalidCharacters = new RegExp('[0-9 ]');
 
             if (invalidCharacters.test(result.discogsConsumerKey)) {
+                // eslint-disable-next-line no-console
                 console.error('--discogsConsumerKey cannot contain numbers or spaces');
                 this.printUsage();
                 process.exit(1);
             }
 
             if (invalidCharacters.test(result.discogsConsumerSecret)) {
+                // eslint-disable-next-line no-console
                 console.error('--discogsConsumerSecret cannot contain numbers or spaces');
                 this.printUsage();
                 process.exit(1);
@@ -55,12 +57,12 @@ const options = raptorArgs.createParser({
         }
     })
     .onError(function (err) {
+        // eslint-disable-next-line no-console
         console.error(err);
         this.printUsage();
         process.exit(1);
     })
     .parse();
-
 
 let albumArtSources = [];
 
@@ -73,8 +75,8 @@ else if (options.discogsConsumerKey || options.discogsConsumerSecret) {
     log.warn('Not adding discogs source. Both key and secret must be passed in.');
 }
 
-
 log.info('Adding Google thumbnail source');
+
 albumArtSources.push(GoogleAlbumArtRetriever.getAlbumImage.bind(GoogleAlbumArtRetriever));
 
 const wrapAlbumArtFuncs = (albumArtSourceFunc, payload) => {
@@ -120,7 +122,7 @@ const generateWallpaper = (data) => {
     async.tryEach(tryEachFuncs,
         function (err, imageBuffer) {
             if (err) {
-                console.error('Could not get an image for this one', err);
+                log.error('Could not get an image for this album', err);
             }
 
             try {

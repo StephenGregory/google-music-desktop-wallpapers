@@ -6,3 +6,10 @@ env:
 rules:
   no-console:
     - warn
+  no-multiple-empty-lines:
+   - error
+   - max: 1
+     maxEOF: 1
+  quotes:
+    - error
+    - single
