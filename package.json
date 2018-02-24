@@ -22,12 +22,14 @@
   "license": "MIT",
   "dependencies": {
     "async": "^2.6.0",
+    "console-log-level": "^1.4.0",
     "debounce": "^1.1.0",
     "disconnect": "^1.2.1",
     "jimp": "^0.2.28",
     "raptor-args": "^1.0.3",
     "request": "^2.83.0",
     "screen-info": "^1.0.1",
+    "time-stamp": "^2.0.0",
     "ws": "^4.0.0"
   },
   "devDependencies": {
