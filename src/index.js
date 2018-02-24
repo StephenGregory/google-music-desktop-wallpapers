@@ -5,6 +5,7 @@ const debounce = require('debounce');
 const path = require('path');
 const Screen = require('screen-info');
 const WebSocket = require('ws');
+const log = require('./lib/Logging/logger');
 
 const Channels = require('./lib/Channels');
 const GoogleAlbumArtRetriever = require('./lib/AlbumArtSource/GooglePlayMusic');
@@ -64,16 +65,16 @@ const options = raptorArgs.createParser({
 let albumArtSources = [];
 
 if (options.discogsConsumerKey && options.discogsConsumerSecret) {
-    console.info(new Date().toISOString(), 'Adding discogs source');
+    log.info('Adding discogs source');
     const discog = new Discogs(options.discogsConsumerKey, options.discogsConsumerSecret);
     albumArtSources.push(discog.getAlbumImage.bind(discog));
 }
 else if (options.discogsConsumerKey || options.discogsConsumerSecret) {
-    console.warn(new Date().toISOString(), 'Not adding discogs source. Both key and secret must be passed in.');
+    log.warn('Not adding discogs source. Both key and secret must be passed in.');
 }
 
 
-console.log(new Date().toISOString(), 'Adding Google thumbnail source');
+log.info('Adding Google thumbnail source');
 albumArtSources.push(GoogleAlbumArtRetriever.getAlbumImage.bind(GoogleAlbumArtRetriever));
 
 const wrapAlbumArtFuncs = (albumArtSourceFunc, payload) => {
@@ -103,7 +104,7 @@ ws.onmessage = e => {
     }
 
     if (data.channel === Channels.ApiVersion && parseInt(data.payload[0]) !== 1) {
-        console.error(new Date().toISOString(), 'API Version 1.*.* supported.', data.payload, 'is not');
+        log.error('API Version 1.*.* supported.', data.payload, 'is not');
         process.exit(1);
     }
 
@@ -144,11 +145,11 @@ const generateWallpaper = (data) => {
                 const destination = path.join(wallpaperOutputDir, 'wallpaper.png');
 
                 baseWallpaper.write(destination, () => {
-                    console.debug(new Date().toISOString(), 'Wallpaper written to', destination);
+                    log.info('Wallpaper written to', destination);
                 });
             }
             catch (error) {
-                console.error(new Date().toISOString(), 'Could not generate wallpaper from downloaded image', error);
+                log.error('Could not generate wallpaper from downloaded image', error);
             }
         });
 };

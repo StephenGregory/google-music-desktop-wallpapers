@@ -1,5 +1,6 @@
 const async = require('async');
 const Discogs = require('disconnect').Client;
+const log = require('../Logging/logger');
 
 module.exports = function (consumerKey, consumerSecret) {
     var db = new Discogs({ consumerKey: consumerKey, consumerSecret: consumerSecret }).database();
@@ -45,14 +46,14 @@ module.exports = function (consumerKey, consumerSecret) {
                         }
 
                         if (response.results.length === 0) {
-                            console.info('No album releases found on Discogs');
+                            log.info('No album releases found on Discogs');
                             return callback(new Error('No album releases found on Discogs'));
                         }
 
                         const releaseIds = getReleaseIdsContaining(response, payload.artist, payload.album);
 
                         if (releaseIds.length === 0) {
-                            console.info('No album releases found on Discogs');
+                            log.info('No album releases found on Discogs');
                             return callback(new Error('No album releases found on Discogs'));
                         }
                         return callback(null, releaseIds);
@@ -82,20 +83,20 @@ module.exports = function (consumerKey, consumerSecret) {
                 }
             ], (error, releaseIds) => {
                 if (error) {
-                    console.error(error);
+                    log.error(error);
                     return callback(error);
                 }
                 const releaseFunctions = releaseIds.map(id => createGetReleaseImageFunction(id));
                 async.tryEach(releaseFunctions,
                     (err, imageUrl) => {
                         if (err) {
-                            console.error('Could not get release information for the releases found on Discogs', err);
+                            log.error('Could not get release information for the releases found on Discogs', err);
                             return callback(err);
                         }
 
                         db.getImage(imageUrl, (err, content) => {
                             if (err) {
-                                console.error('Could not get release image on Discogs', err);
+                                log.error('Could not get release image on Discogs', err);
                                 return callback(err);
                             }
                             return callback(null, new Buffer(content, 'binary'));
