@@ -11,8 +11,6 @@ const Channels = require('./lib/Channels');
 const GoogleAlbumArtRetriever = require('./lib/AlbumArtSource/GooglePlayMusic');
 const Discogs = require('./lib/AlbumArtSource/Discogs');
 
-let ws = new WebSocket('ws://localhost:5672');
-
 const options = raptorArgs.createParser({
     '--help -h': {
         type: 'string',
@@ -97,6 +95,8 @@ const isImageLarger = (baseImage, otherImage) => {
 };
 
 const wallpaperOutputDir = process.cwd();
+
+let ws = new WebSocket('ws://localhost:5672');
 
 ws.onmessage = e => {
     const data = JSON.parse(e.data);
