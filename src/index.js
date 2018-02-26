@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 
 const log = require('./lib/Logging/logger');
 const AlbumArtWallpaper = require('./lib/AlbumArtWallpaper');
+const AlbumCoverProvider = require('./lib/AlbumCoverProvider');
 const Channels = require('./lib/Channels');
 const GoogleAlbumArtRetriever = require('./lib/AlbumArtSource/GooglePlayMusic');
 const Discogs = require('./lib/AlbumArtSource/Discogs');
@@ -78,7 +79,8 @@ const wallpaperOutputDir = process.cwd();
 
 let ws = new WebSocket('ws://localhost:5672');
 
-const albumArtCreator = new AlbumArtWallpaper(wallpaperOutputDir, albumArtSources);
+const albumCoverProvider = new AlbumCoverProvider(albumArtSources);
+const albumArtCreator = new AlbumArtWallpaper(wallpaperOutputDir, albumCoverProvider);
 
 const debouncedGenerateWallpaper = debounce(albumArtCreator.create, 5000);
 
