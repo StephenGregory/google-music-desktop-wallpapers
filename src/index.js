@@ -21,11 +21,23 @@ const options = raptorArgs.createParser({
     '--discogsConsumerSecret': {
         type: 'string',
         description: 'Discogs consumer secret'
+    },
+    '--outputPath -o': {
+        type: 'string',
+        description: 'Output path template. Include optional artist and album name template names (e.g. /path/to/store/wallpaper-{artist}-{album}.png)'
     }
 })
     .usage('Usage: npm start [-- [options]]')
-    .example('Generate wallpaper from low quality Google Music album thumbail',
+    .example('Generate wallpaper from low quality Google Music album thumbnail. Saves in current directory as wallpaper.png',
         'npm start')
+    .example('Generate wallpaper and save a new wallpaper as ~/wallpapers/music.png each time the track changes',
+        'npm start -- --outputPath ~/wallpapers/music.png')
+    .example('Generate wallpaper and save with the album name only',
+        'npm start -- --outputPath ~/wallpapers/wallpaper-{album}.png')
+    .example('Generate wallpaper and save with the artist and album name',
+        'npm start -- --outputPath ~/wallpapers/{artist}-{album}.png')
+    .example('Generate wallpaper for album and save in a folder for the artist',
+        'npm start -- --outputPath ~/wallpapers/{artist}/{album}.png')
     .example('Generate wallpaper from Discogs album art as primary source and Google Music thumbnail as secondary source',
         'npm start -- --discogsConsumerKey KEY --discogsConsumerSecret SECRET')
     .validate(function (result) {
