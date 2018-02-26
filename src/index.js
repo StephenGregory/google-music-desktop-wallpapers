@@ -1,17 +1,13 @@
-const async = require('async');
 const raptorArgs = require('raptor-args');
-const Jimp = require('jimp');
 const debounce = require('debounce');
-const path = require('path');
-const Screen = require('screen-info');
 const WebSocket = require('ws');
-const log = require('./lib/Logging/logger');
 
+const log = require('./lib/Logging/logger');
+const AlbumArtWallpaper = require('./lib/AlbumArtWallpaper');
+const AlbumCoverProvider = require('./lib/AlbumCoverProvider');
 const Channels = require('./lib/Channels');
 const GoogleAlbumArtRetriever = require('./lib/AlbumArtSource/GooglePlayMusic');
 const Discogs = require('./lib/AlbumArtSource/Discogs');
-
-let ws = new WebSocket('ws://localhost:5672');
 
 const options = raptorArgs.createParser({
     '--help -h': {
@@ -68,8 +64,8 @@ let albumArtSources = [];
 
 if (options.discogsConsumerKey && options.discogsConsumerSecret) {
     log.info('Adding discogs source');
-    const discog = new Discogs(options.discogsConsumerKey, options.discogsConsumerSecret);
-    albumArtSources.push(discog.getAlbumImage.bind(discog));
+    const discogs = new Discogs(options.discogsConsumerKey, options.discogsConsumerSecret);
+    albumArtSources.push(discogs);
 }
 else if (options.discogsConsumerKey || options.discogsConsumerSecret) {
     log.warn('Not adding discogs source. Both key and secret must be passed in.');
@@ -77,26 +73,16 @@ else if (options.discogsConsumerKey || options.discogsConsumerSecret) {
 
 log.info('Adding Google thumbnail source');
 
-albumArtSources.push(GoogleAlbumArtRetriever.getAlbumImage.bind(GoogleAlbumArtRetriever));
-
-const wrapAlbumArtFuncs = (albumArtSourceFunc, payload) => {
-    return (callback) => {
-        albumArtSourceFunc(payload, callback);
-    }
-};
-
-const compositeInCenter = (baseImage, overlayImage) => {
-    baseImage.composite(overlayImage,
-        baseImage.bitmap.width / 2 - overlayImage.bitmap.width / 2,
-        baseImage.bitmap.height / 2 - overlayImage.bitmap.height / 2
-    );
-};
-
-const isImageLarger = (baseImage, otherImage) => {
-    return otherImage.bitmap.width > baseImage.bitmap.width || otherImage.bitmap.height > baseImage.bitmap.height
-};
+albumArtSources.push(GoogleAlbumArtRetriever);
 
 const wallpaperOutputDir = process.cwd();
+
+let ws = new WebSocket('ws://localhost:5672');
+
+const albumCoverProvider = new AlbumCoverProvider(albumArtSources);
+const albumArtCreator = new AlbumArtWallpaper(wallpaperOutputDir, albumCoverProvider);
+
+const debouncedGenerateWallpaper = debounce(albumArtCreator.create, 5000);
 
 ws.onmessage = e => {
     const data = JSON.parse(e.data);
@@ -114,46 +100,3 @@ ws.onmessage = e => {
         debouncedGenerateWallpaper(data);
     }
 };
-
-const generateWallpaper = (data) => {
-
-    const tryEachFuncs = albumArtSources.map(s => wrapAlbumArtFuncs(s, data.payload));
-
-    async.tryEach(tryEachFuncs,
-        function (err, imageBuffer) {
-            if (err) {
-                log.error('Could not get an image for this album', err);
-            }
-
-            try {
-                const baseWallpaper = new Jimp(Screen.main().width, Screen.main().height);
-
-                const albumArt = new Jimp(imageBuffer, () => { });
-
-                const focusedAlbumArt = albumArt.clone();
-
-                if (isImageLarger(baseWallpaper, focusedAlbumArt)) {
-                    focusedAlbumArt.scaleToFit(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height);
-                }
-
-                const outOfFocusAlbumArt = albumArt.clone()
-                    .cover(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height)
-                    .scale(1.5)
-                    .blur(20);
-
-                compositeInCenter(baseWallpaper, outOfFocusAlbumArt);
-                compositeInCenter(baseWallpaper, focusedAlbumArt);
-
-                const destination = path.join(wallpaperOutputDir, 'wallpaper.png');
-
-                baseWallpaper.write(destination, () => {
-                    log.info('Wallpaper written to', destination);
-                });
-            }
-            catch (error) {
-                log.error('Could not generate wallpaper from downloaded image', error);
-            }
-        });
-};
-
-const debouncedGenerateWallpaper = debounce(generateWallpaper, 5000);
