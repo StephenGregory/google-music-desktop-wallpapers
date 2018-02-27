@@ -11,6 +11,7 @@ const AlbumCoverProvider = require('./lib/AlbumCoverProvider');
 const Channels = require('./lib/Channels');
 const GoogleAlbumArtRetriever = require('./lib/AlbumArtSource/GooglePlayMusic');
 const Discogs = require('./lib/AlbumArtSource/Discogs');
+const wallpaper = require('./lib/Wallpaper');
 
 const options = raptorArgs.createParser({
     '--help -h': {
@@ -28,6 +29,12 @@ const options = raptorArgs.createParser({
     '--outputPath -o': {
         type: 'string',
         description: 'Output path template. Include optional artist and album name template names (e.g. /path/to/store/wallpaper-{artist}-{album}.png)'
+    },
+    '--set-wallpaper': {
+        type: 'boolean',
+        description: 'A flag to automatically set wallpaper of desktops. Note that wallpaper is ' +
+            'not restored when this app closes. On MacOS, only sets it on visible screens. Also, does not work for MacOS desktops that are set ' +
+            'to rotate through a set of wallpapers.'
     }
 })
     .usage('Usage: npm start [-- [options]]')
@@ -41,6 +48,8 @@ const options = raptorArgs.createParser({
         'npm start -- --outputPath ~/wallpapers/{artist}-{album}.png')
     .example('Generate wallpaper for album and save in a folder for the artist',
         'npm start -- --outputPath ~/wallpapers/{artist}/{album}.png')
+    .example('Generate wallpaper from low quality Google Music album thumbail and automatically set your screen\'s wallpapers',
+        'npm start -- --set-wallpaper')
     .example('Generate wallpaper from Discogs album art as primary source and Google Music thumbnail as secondary source',
         'npm start -- --discogsConsumerKey KEY --discogsConsumerSecret SECRET')
     .validate(function (result) {
@@ -125,3 +134,16 @@ ws.onmessage = e => {
         debouncedGenerateWallpaper(data);
     }
 };
+
+if (options.setWallpaper) {
+    albumArtCreator.on('wallpaper-created', (path) => {
+        wallpaper.set(path, (err) => {
+            if (err) {
+                log.error('Could not set wallpaper', err);
+            }
+            else {
+                log.info('Set wallpaper');
+            }
+        });
+    });
+}
