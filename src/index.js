@@ -1,8 +1,11 @@
 const raptorArgs = require('raptor-args');
 const debounce = require('debounce');
 const WebSocket = require('ws');
+const path = require('path');
 
 const log = require('./lib/Logging/logger');
+const formatter = require('./lib/AlbumWallpaperNameFormatter');
+const pathResolver = require('./lib/util/PathResolver');
 const AlbumArtWallpaper = require('./lib/AlbumArtWallpaper');
 const AlbumCoverProvider = require('./lib/AlbumCoverProvider');
 const Channels = require('./lib/Channels');
@@ -46,6 +49,18 @@ const options = raptorArgs.createParser({
             process.exit(0);
         }
 
+        if (result.outputPath) {
+            const extraneousStrings = formatter.getAnyExtraneousTemplateStrings(result.outputPath);
+
+            if (extraneousStrings.length > 0) {
+                throw new Error('The following template strings in the output path are invalid: ' + extraneousStrings.join(', '))
+            }
+            result.outputPath = pathResolver.resolveHome(result.outputPath);
+        }
+        else {
+            result.outputPath = path.join(process.cwd(), 'wallpaper-{artist}-{album}.png');
+        }
+
         if (result.discogsConsumerKey && result.discogsConsumerKey) {
             const invalidCharacters = new RegExp('[0-9 ]');
 
@@ -87,12 +102,10 @@ log.info('Adding Google thumbnail source');
 
 albumArtSources.push(GoogleAlbumArtRetriever);
 
-const wallpaperOutputDir = process.cwd();
-
 let ws = new WebSocket('ws://localhost:5672');
 
 const albumCoverProvider = new AlbumCoverProvider(albumArtSources);
-const albumArtCreator = new AlbumArtWallpaper(wallpaperOutputDir, albumCoverProvider);
+const albumArtCreator = new AlbumArtWallpaper(options.outputPath, albumCoverProvider);
 
 const debouncedGenerateWallpaper = debounce(albumArtCreator.create, 5000);
 
