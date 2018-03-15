@@ -1,8 +1,11 @@
 const raptorArgs = require('raptor-args');
 const debounce = require('debounce');
 const WebSocket = require('ws');
+const path = require('path');
 
 const log = require('./lib/Logging/logger');
+const formatter = require('./lib/AlbumWallpaperNameFormatter');
+const pathResolver = require('./lib/util/PathResolver');
 const AlbumArtWallpaper = require('./lib/AlbumArtWallpaper');
 const AlbumCoverProvider = require('./lib/AlbumCoverProvider');
 const Channels = require('./lib/Channels');
@@ -21,17 +24,41 @@ const options = raptorArgs.createParser({
     '--discogsConsumerSecret': {
         type: 'string',
         description: 'Discogs consumer secret'
+    },
+    '--outputPath -o': {
+        type: 'string',
+        description: 'Output path template. Include optional artist and album name template names (e.g. /path/to/store/wallpaper-{artist}-{album}.png)'
     }
 })
     .usage('Usage: npm start [-- [options]]')
-    .example('Generate wallpaper from low quality Google Music album thumbail',
+    .example('Generate wallpaper from low quality Google Music album thumbnail. Saves in current directory as wallpaper.png',
         'npm start')
+    .example('Generate wallpaper and save a new wallpaper as ~/wallpapers/music.png each time the track changes',
+        'npm start -- --outputPath ~/wallpapers/music.png')
+    .example('Generate wallpaper and save with the album name only',
+        'npm start -- --outputPath ~/wallpapers/wallpaper-{album}.png')
+    .example('Generate wallpaper and save with the artist and album name',
+        'npm start -- --outputPath ~/wallpapers/{artist}-{album}.png')
+    .example('Generate wallpaper for album and save in a folder for the artist',
+        'npm start -- --outputPath ~/wallpapers/{artist}/{album}.png')
     .example('Generate wallpaper from Discogs album art as primary source and Google Music thumbnail as secondary source',
         'npm start -- --discogsConsumerKey KEY --discogsConsumerSecret SECRET')
     .validate(function (result) {
         if (result.help) {
             this.printUsage();
             process.exit(0);
+        }
+
+        if (result.outputPath) {
+            const extraneousStrings = formatter.getAnyExtraneousTemplateStrings(result.outputPath);
+
+            if (extraneousStrings.length > 0) {
+                throw new Error('The following template strings in the output path are invalid: ' + extraneousStrings.join(', '))
+            }
+            result.outputPath = pathResolver.resolveHome(result.outputPath);
+        }
+        else {
+            result.outputPath = path.join(process.cwd(), 'wallpaper-{artist}-{album}.png');
         }
 
         if (result.discogsConsumerKey && result.discogsConsumerKey) {
@@ -75,12 +102,10 @@ log.info('Adding Google thumbnail source');
 
 albumArtSources.push(GoogleAlbumArtRetriever);
 
-const wallpaperOutputDir = process.cwd();
-
 let ws = new WebSocket('ws://localhost:5672');
 
 const albumCoverProvider = new AlbumCoverProvider(albumArtSources);
-const albumArtCreator = new AlbumArtWallpaper(wallpaperOutputDir, albumCoverProvider);
+const albumArtCreator = new AlbumArtWallpaper(options.outputPath, albumCoverProvider);
 
 const debouncedGenerateWallpaper = debounce(albumArtCreator.create, 5000);
 

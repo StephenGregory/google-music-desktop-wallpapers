@@ -1,12 +1,12 @@
 
 const Jimp = require('jimp');
-const path = require('path');
 const Screen = require('screen-info');
+const formatter = require('./AlbumWallpaperNameFormatter');
 const log = require('./Logging/logger');
 const JimpExtensions = require('./JimpExtensions');
 
 function AlbumArtCreator(wallpaperOutputDir, albumCoverProvider) {
-    this.wallpaperOutputDir = wallpaperOutputDir;
+    this.wallpaperDestination = wallpaperOutputDir;
     this.albumCoverProvider = albumCoverProvider;
 
     this.create = (data) => {
@@ -35,7 +35,11 @@ function AlbumArtCreator(wallpaperOutputDir, albumCoverProvider) {
                 JimpExtensions.compositeInCenter(baseWallpaper, outOfFocusAlbumArt);
                 JimpExtensions.compositeInCenter(baseWallpaper, focusedAlbumArt);
 
-                const destination = path.join(this.wallpaperOutputDir, 'wallpaper.png');
+                const destination = formatter.formatPath(this.wallpaperDestination, data.payload.artist, data.payload.album);
+                if (!destination) {
+                    log.error('Wallpaper path after formatting was undefined. Cannot create wallpaper');
+                    return;
+                }
 
                 baseWallpaper.write(destination, () => {
                     log.info('Wallpaper written to', destination);
