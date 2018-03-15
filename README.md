@@ -27,6 +27,8 @@ To respond to events, the desktop player needs to emit them. To enable this:
 
 Wallpapers will be written to the current directory each time the track changes. They will have the same resolution as your main display.
 
+You can also enable automatically setting the wallpaper of all of your visible screens.
+
 ## Wallpaper kinds
 
 ### Album Art

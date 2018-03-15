@@ -1,4 +1,5 @@
-
+const EventEmitter = require('events');
+const util = require('util');
 const Jimp = require('jimp');
 const Screen = require('screen-info');
 const formatter = require('./AlbumWallpaperNameFormatter');
@@ -6,6 +7,7 @@ const log = require('./Logging/logger');
 const JimpExtensions = require('./JimpExtensions');
 
 function AlbumArtCreator(wallpaperOutputDir, albumCoverProvider) {
+    EventEmitter.call(this);
     this.wallpaperDestination = wallpaperOutputDir;
     this.albumCoverProvider = albumCoverProvider;
 
@@ -43,6 +45,7 @@ function AlbumArtCreator(wallpaperOutputDir, albumCoverProvider) {
 
                 baseWallpaper.write(destination, () => {
                     log.info('Wallpaper written to', destination);
+                    this.emit('wallpaper-created', destination);
                 });
             }
             catch (error) {
@@ -51,5 +54,7 @@ function AlbumArtCreator(wallpaperOutputDir, albumCoverProvider) {
         }.bind(this));
     };
 }
+
+util.inherits(AlbumArtCreator, EventEmitter)
 
 module.exports = AlbumArtCreator;
