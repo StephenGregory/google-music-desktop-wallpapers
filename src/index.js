@@ -130,7 +130,7 @@ ws.onmessage = e => {
         process.exit(1);
     }
 
-    if (data.channel === Channels.Track) {
+    if (data.channel === Channels.Track && data.payload.artist && data.payload.album) {
         debouncedGenerateWallpaper(data);
     }
 };
