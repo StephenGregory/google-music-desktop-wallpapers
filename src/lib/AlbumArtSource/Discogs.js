@@ -5,7 +5,7 @@ const log = require('../Logging/logger');
 module.exports = function (consumerKey, consumerSecret) {
     var db = new Discogs({ consumerKey: consumerKey, consumerSecret: consumerSecret }).database();
 
-    const createGetReleaseImageFunction = (releaseId) => {
+    const createGetImageFromReleaseDetailsFunc = (releaseId, invalidImageUrls) => {
         return (callback) => {
             db.getRelease(releaseId, (error, response) => {
                 if (error) {
@@ -17,6 +17,10 @@ module.exports = function (consumerKey, consumerSecret) {
                 }
 
                 const image = response.images.find((imageAttr) => imageAttr.type === 'primary') || response.images[0];
+
+                if (invalidImageUrls.includes(image.uri)) {
+                    return callback(new Error('Already tried this image'));
+                }
                 return callback(null, image.uri);
             });
         }
@@ -29,11 +33,10 @@ module.exports = function (consumerKey, consumerSecret) {
             }));
     }
 
-    const getReleaseIdsContaining = (results, artist, album) => {
+    const getReleasesContainingAlbumInfo = (results, artist, album) => {
         return results
             .filter(r => r.title.toLowerCase().indexOf(artist.toLowerCase()) > -1)
             .filter(r => r.title.toLowerCase().indexOf(album.toLowerCase()) > -1)
-            .map(r => r.id)
     };
 
     return {
@@ -57,15 +60,12 @@ module.exports = function (consumerKey, consumerSecret) {
                             log.debug('No album releases found on Discogs');
                             return callback(new Error('No album releases found on Discogs'));
                         }
+                        const validReleases = filterResultsContainingValidFormat(getReleasesContainingAlbumInfo(response.results));
 
-                        const releaseIds = getReleaseIdsContaining(filterResultsContainingValidFormat(response.results),
-                            payload.artist, payload.album);
-
-                        if (releaseIds.length === 0) {
-                            log.debug('No album releases found on Discogs');
+                        if (validReleases.length === 0) {
                             return callback(new Error('No album releases found on Discogs'));
                         }
-                        return callback(null, releaseIds);
+                        return callback(null, validReleases);
                     });
                 },
                 function findReleaseByBroadSearch(callback) {
@@ -83,22 +83,33 @@ module.exports = function (consumerKey, consumerSecret) {
                             return callback(new Error('No album releases found on Discogs'));
                         }
 
-                        const releaseIds = getReleaseIdsContaining(filterResultsContainingValidFormat(response.results),
-                            payload.artist, payload.album);
+                        const validReleases = filterResultsContainingValidFormat(response.results);
 
-                        if (releaseIds.length === 0) {
+                        if (validReleases.length === 0) {
                             return callback(new Error('No album releases found on Discogs'));
                         }
-                        return callback(null, releaseIds);
+                        return callback(null, validReleases);
                     });
                 }
-            ], (error, releaseIds) => {
+            ], (error, releases) => {
                 if (error) {
                     log.error(error);
                     return callback(error);
                 }
-                const releaseFunctions = releaseIds.map(id => createGetReleaseImageFunction(id));
-                async.tryEach(releaseFunctions,
+
+                const releaseIds = releases.map(r => r.id);
+
+                const coverImageUrls = releases.map(r => r.cover_image).filter(path => path);
+
+                const imageCoverPaths = coverImageUrls.map(url => {
+                    return (callback) => {
+                        callback(null, url);
+                    }
+                });
+
+                const primaryImageReleaseImageFunc = releaseIds.map(id => createGetImageFromReleaseDetailsFunc(id, coverImageUrls));
+
+                async.tryEach(imageCoverPaths.concat(primaryImageReleaseImageFunc),
                     (err, imageUrl) => {
                         if (err) {
                             log.warn('Could not get release information for the releases found on Discogs', err);
