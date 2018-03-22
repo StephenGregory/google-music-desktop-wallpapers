@@ -22,8 +22,15 @@ module.exports = function (consumerKey, consumerSecret) {
         }
     };
 
-    const getReleaseIdsContaining = (searchResult, artist, album) => {
-        return searchResult.results
+    const filterResultsContainingValidFormat = (results) => {
+        return results
+            .filter(r => r.format.some(format => {
+                return ['cd', 'vinyl', 'mp3'].includes(format.toLowerCase())
+            }));
+    }
+
+    const getReleaseIdsContaining = (results, artist, album) => {
+        return results
             .filter(r => r.title.toLowerCase().indexOf(artist.toLowerCase()) > -1)
             .filter(r => r.title.toLowerCase().indexOf(album.toLowerCase()) > -1)
             .map(r => r.id)
@@ -37,7 +44,8 @@ module.exports = function (consumerKey, consumerSecret) {
                     const params = {
                         artist: payload.artist,
                         release_title: payload.album,
-                        type: 'release'
+                        type: 'release',
+                        format: 'album'
                     };
 
                     db.search(query, params, (error, response) => {
@@ -50,7 +58,8 @@ module.exports = function (consumerKey, consumerSecret) {
                             return callback(new Error('No album releases found on Discogs'));
                         }
 
-                        const releaseIds = getReleaseIdsContaining(response, payload.artist, payload.album);
+                        const releaseIds = getReleaseIdsContaining(filterResultsContainingValidFormat(response.results),
+                            payload.artist, payload.album);
 
                         if (releaseIds.length === 0) {
                             log.debug('No album releases found on Discogs');
@@ -62,7 +71,8 @@ module.exports = function (consumerKey, consumerSecret) {
                 function findReleaseByBroadSearch(callback) {
                     const query = payload.artist + ' ' + payload.album;
                     const params = {
-                        type: 'release'
+                        type: 'release',
+                        format: 'album'
                     };
                     db.search(query, params, (error, response) => {
                         if (error) {
@@ -73,7 +83,8 @@ module.exports = function (consumerKey, consumerSecret) {
                             return callback(new Error('No album releases found on Discogs'));
                         }
 
-                        const releaseIds = getReleaseIdsContaining(response, payload.artist, payload.album);
+                        const releaseIds = getReleaseIdsContaining(filterResultsContainingValidFormat(response.results),
+                            payload.artist, payload.album);
 
                         if (releaseIds.length === 0) {
                             return callback(new Error('No album releases found on Discogs'));
