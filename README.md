@@ -44,3 +44,9 @@ Provides a thumbnail of the album cover.
 #### Discogs
 
 [Discogs](https://www.discogs.com/) provides higher quality album art images. To use it as a source, you need to create an account and [create a consumer key and secret](https://www.discogs.com/developers/#page:authentication).
+
+## Troubleshooting
+
+If you run into problems install dependencies on Windows due to node-gyp, follow steps outlined here:
+
+[Compiling Native Addon Modules](https://github.com/Microsoft/nodejs-guidelines/blob/master/windows-environment.md#compiling-native-addon-modules).
