@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.2.0
+
+Feature:
+
+- Configurable output name
+- Retrieve album cover from immediate Discogs search results
+
+Bug fixes:
+
+- Add album to Discogs search criteria
+- Only generate wallpaper when payload has details
+
+Other:
+
+- Add repository and bugs to package.json
+- Add ESLint rules
+- Refactor logging
+- Refactor wallpaper creation
+- Add Changelog
+
 ## v0.1.1
 
 Bug fixes:
