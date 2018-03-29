@@ -1,11 +1,13 @@
 const async = require('async');
 const Discogs = require('disconnect').Client;
 const log = require('../Logging/logger');
+const GooglePlayMusic = require('./GooglePlayMusic');
+const ImageComparator = require('../util/ImageComparator');
 
 module.exports = function (consumerKey, consumerSecret) {
     var db = new Discogs({ consumerKey: consumerKey, consumerSecret: consumerSecret }).database();
 
-    const createGetImageFromReleaseDetailsFunc = (releaseId, invalidImageUrls) => {
+    const createFunctionToGetImageFromReleaseDetails = (releaseId, invalidImageUrls) => {
         return (callback) => {
             db.getRelease(releaseId, (error, response) => {
                 if (error) {
@@ -26,7 +28,7 @@ module.exports = function (consumerKey, consumerSecret) {
         }
     };
 
-    const filterResultsContainingValidFormat = (results) => {
+    const getReleasesWithValidAlbumFormat = (results) => {
         return results
             .filter(r => r.format.some(format => {
                 return ['cd', 'vinyl', 'mp3'].includes(format.toLowerCase())
@@ -41,90 +43,117 @@ module.exports = function (consumerKey, consumerSecret) {
 
     return {
         getAlbumImage: (payload, callback) => {
-            async.tryEach([
-                function findReleaseBySpecificSearch(callback) {
-                    const query = null;
-                    const params = {
-                        artist: payload.artist,
-                        release_title: payload.album,
-                        type: 'release',
-                        format: 'album'
-                    };
-
-                    db.search(query, params, (error, response) => {
-                        if (error) {
-                            return callback(error);
-                        }
-
-                        if (response.results.length === 0) {
-                            log.debug('No album releases found on Discogs');
-                            return callback(new Error('No album releases found on Discogs'));
-                        }
-                        const validReleases = filterResultsContainingValidFormat(getReleasesContainingAlbumInfo(response.results));
-
-                        if (validReleases.length === 0) {
-                            return callback(new Error('No album releases found on Discogs'));
-                        }
-                        return callback(null, validReleases);
-                    });
+            let tasks = {
+                thumbnailBuffer: (cb) => {
+                    GooglePlayMusic.getAlbumImage(payload, (err, body) => cb(err, body));
                 },
-                function findReleaseByBroadSearch(callback) {
-                    const query = payload.artist + ' ' + payload.album;
-                    const params = {
-                        type: 'release',
-                        format: 'album'
-                    };
-                    db.search(query, params, (error, response) => {
-                        if (error) {
-                            return callback(error);
-                        }
+                releases: (callback) => {
+                    async.tryEach([
+                        function findReleaseBySpecificSearch(cb) {
+                            const query = null;
+                            const params = {
+                                artist: payload.artist,
+                                release_title: payload.album,
+                                type: 'release',
+                                format: 'album'
+                            };
 
-                        if (response.results.length === 0) {
-                            return callback(new Error('No album releases found on Discogs'));
-                        }
+                            db.search(query, params, (error, response) => {
+                                if (error) {
+                                    return cb(error);
+                                }
 
-                        const validReleases = filterResultsContainingValidFormat(response.results);
+                                if (response.results.length === 0) {
+                                    log.debug('No album releases found on Discogs');
+                                    return cb(new Error('No album releases found on Discogs'));
+                                }
+                                const validReleases = getReleasesWithValidAlbumFormat(getReleasesContainingAlbumInfo(response.results,
+                                    payload.artist, payload.album));
 
-                        if (validReleases.length === 0) {
-                            return callback(new Error('No album releases found on Discogs'));
+                                if (validReleases.length === 0) {
+                                    return cb(new Error('No album releases found on Discogs'));
+                                }
+                                return cb(null, validReleases);
+                            });
+                        },
+                        function findReleaseByBroadSearch(cb) {
+                            const query = payload.artist + ' ' + payload.album;
+                            const params = {
+                                type: 'release',
+                                format: 'album'
+                            };
+                            db.search(query, params, (error, response) => {
+                                if (error) {
+                                    return cb(error);
+                                }
+
+                                if (response.results.length === 0) {
+                                    return cb(new Error('No album releases found on Discogs'));
+                                }
+
+                                const validReleases = getReleasesWithValidAlbumFormat(response.results);
+
+                                if (validReleases.length === 0) {
+                                    return cb(new Error('No album releases found on Discogs'));
+                                }
+                                return cb(null, response.results);
+                            });
                         }
-                        return callback(null, validReleases);
-                    });
+                    ],
+                        callback);
                 }
-            ], (error, releases) => {
-                if (error) {
-                    log.error(error);
-                    return callback(error);
-                }
+            };
 
-                const releaseIds = releases.map(r => r.id);
-
-                const coverImageUrls = releases.map(r => r.cover_image).filter(path => path);
-
-                const imageCoverPaths = coverImageUrls.map(url => {
-                    return (callback) => {
-                        callback(null, url);
+            async.series(async.reflectAll(tasks),
+                (error, results) => {
+                    if (results.thumbnailBuffer.error) {
+                        return callback(new Error('Could not get thumbail image for comparison'));
                     }
-                });
+                    if (results.releases.error) {
+                        return callback(new Error('Could find releases on Discogs'));
+                    }
 
-                const primaryImageReleaseImageFunc = releaseIds.map(id => createGetImageFromReleaseDetailsFunc(id, coverImageUrls));
+                    const releases = results.releases.value;
 
-                async.tryEach(imageCoverPaths.concat(primaryImageReleaseImageFunc),
-                    (err, imageUrl) => {
-                        if (err) {
-                            log.warn('Could not get release information for the releases found on Discogs', err);
-                            return callback(err);
+                    const releaseIds = releases.map(r => r.id);
+
+                    const coverImageUrls = releases.map(r => r.cover_image).filter(path => path);
+
+                    const imageCoverPaths = coverImageUrls.map(url => {
+                        return (cb) => {
+                            cb(null, url);
                         }
-
-                        db.getImage(imageUrl, (err, content) => {
-                            if (err) {
-                                log.error('Could not get release image on Discogs', err);
-                                return callback(err);
-                            }
-                            return callback(null, new Buffer(content, 'binary'));
-                        });
                     });
-            });
+
+                    const primaryImageReleaseImageFunc = releaseIds.map(id => createFunctionToGetImageFromReleaseDetails(id, imageCoverPaths));
+                    const getDigitalImageFunctions = imageCoverPaths.concat(primaryImageReleaseImageFunc).map((fn) => {
+                        return (cb) => {
+                            async.waterfall([fn,
+                                function validate(imageUrl, cb) {
+                                    db.getImage(imageUrl, (error, content) => {
+                                        if (error) {
+                                            return cb(error);
+                                        }
+                                        const releaseImageBuffer = new Buffer(content, 'binary');
+                                        ImageComparator.areSame(results.thumbnailBuffer.value, releaseImageBuffer, (error, areSame) => {
+                                            if (error) {
+                                                return cb(error);
+                                            }
+                                            if (!areSame) {
+                                                log.debug('Image at ', imageUrl, ' not the same as thumbnail');
+                                                return cb(new Error('Release image is not same as thumbail'));
+                                            }
+                                            return cb(null, releaseImageBuffer);
+                                        });
+                                    });
+                                }
+                            ],
+                                cb);
+                        }
+                    });
+
+                    async.tryEach(getDigitalImageFunctions, callback);
+                });
         }
     }
 }
