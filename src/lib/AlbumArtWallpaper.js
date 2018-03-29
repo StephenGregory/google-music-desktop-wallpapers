@@ -21,32 +21,36 @@ function AlbumArtCreator(wallpaperOutputDir, albumCoverProvider) {
             try {
                 const baseWallpaper = new Jimp(Screen.main().width, Screen.main().height);
 
-                const albumArt = new Jimp(imageBuffer, () => { });
+                Jimp.read(imageBuffer)
+                    .then((albumArt) => {
+                        const focusedAlbumArt = albumArt.clone();
 
-                const focusedAlbumArt = albumArt.clone();
+                        if (JimpExtensions.isImageLarger(baseWallpaper, focusedAlbumArt)) {
+                            focusedAlbumArt.scaleToFit(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height);
+                        }
 
-                if (JimpExtensions.isImageLarger(baseWallpaper, focusedAlbumArt)) {
-                    focusedAlbumArt.scaleToFit(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height);
-                }
+                        const outOfFocusAlbumArt = albumArt.clone()
+                            .cover(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height)
+                            .scale(1.5)
+                            .blur(20);
 
-                const outOfFocusAlbumArt = albumArt.clone()
-                    .cover(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height)
-                    .scale(1.5)
-                    .blur(20);
+                        JimpExtensions.compositeInCenter(baseWallpaper, outOfFocusAlbumArt);
+                        JimpExtensions.compositeInCenter(baseWallpaper, focusedAlbumArt);
 
-                JimpExtensions.compositeInCenter(baseWallpaper, outOfFocusAlbumArt);
-                JimpExtensions.compositeInCenter(baseWallpaper, focusedAlbumArt);
+                        const destination = formatter.formatPath(this.wallpaperDestination, data.payload.artist, data.payload.album);
+                        if (!destination) {
+                            log.error('Wallpaper path after formatting was undefined. Cannot create wallpaper');
+                            return;
+                        }
 
-                const destination = formatter.formatPath(this.wallpaperDestination, data.payload.artist, data.payload.album);
-                if (!destination) {
-                    log.error('Wallpaper path after formatting was undefined. Cannot create wallpaper');
-                    return;
-                }
-
-                baseWallpaper.write(destination, () => {
-                    log.info('Wallpaper written to', destination);
-                    this.emit('wallpaper-created', destination);
-                });
+                        baseWallpaper.write(destination, () => {
+                            log.info('Wallpaper written to', destination);
+                            this.emit('wallpaper-created', destination);
+                        });
+                    })
+                    .catch((error) => {
+                        log.error('Could not generate wallpaper from downloaded image', error);
+                    })
             }
             catch (error) {
                 log.error('Could not generate wallpaper from downloaded image', error);
