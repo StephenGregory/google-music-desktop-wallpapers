@@ -9,8 +9,8 @@ function AlbumCoverProvider(albumArtSources) {
         }
     };
 
-    this.getAlbumCover = (data, callback) => {
-        const tryEachFuncs = this.albumArtSources.map(s => this._wrapAlbumArtFuncs(s, data.payload));
+    this.getAlbumCover = (payload, callback) => {
+        const tryEachFuncs = this.albumArtSources.map(s => this._wrapAlbumArtFuncs(s, payload));
 
         async.tryEach(tryEachFuncs,
             (err, imageBuffer) => {
