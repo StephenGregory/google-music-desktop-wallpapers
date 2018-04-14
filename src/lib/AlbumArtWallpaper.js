@@ -11,9 +11,9 @@ function AlbumArtCreator(wallpaperOutputDir, albumCoverProvider) {
     this.wallpaperDestination = wallpaperOutputDir;
     this.albumCoverProvider = albumCoverProvider;
 
-    this.create = (data) => {
+    this.create = (payload) => {
 
-        albumCoverProvider.getAlbumCover(data, function (err, imageBuffer) {
+        albumCoverProvider.getAlbumCover(payload, function (err, imageBuffer) {
             if (err) {
                 log.error('Could not get an image for this album', err);
             }
@@ -37,7 +37,7 @@ function AlbumArtCreator(wallpaperOutputDir, albumCoverProvider) {
                         JimpExtensions.compositeInCenter(baseWallpaper, outOfFocusAlbumArt);
                         JimpExtensions.compositeInCenter(baseWallpaper, focusedAlbumArt);
 
-                        const destination = formatter.formatPath(this.wallpaperDestination, data.payload.artist, data.payload.album);
+                        const destination = formatter.formatPath(this.wallpaperDestination, payload.artist, payload.album);
                         if (!destination) {
                             log.error('Wallpaper path after formatting was undefined. Cannot create wallpaper');
                             return;

@@ -1,6 +1,5 @@
 const raptorArgs = require('raptor-args');
 const debounce = require('debounce');
-const WebSocket = require('ws');
 const path = require('path');
 
 const log = require('./lib/Logging/logger');
@@ -12,6 +11,7 @@ const Channels = require('./lib/Channels');
 const GoogleAlbumArtRetriever = require('./lib/AlbumArtSource/GooglePlayMusic');
 const Discogs = require('./lib/AlbumArtSource/Discogs');
 const wallpaper = require('./lib/Wallpaper');
+const PlayerEventEmitter = require('./lib/DesktopPlayerEventEmitter');
 
 const options = raptorArgs.createParser({
     '--help -h': {
@@ -111,29 +111,26 @@ log.info('Adding Google thumbnail source');
 
 albumArtSources.push(GoogleAlbumArtRetriever);
 
-let ws = new WebSocket('ws://localhost:5672');
+let desktopPlayerEventEmitter = new PlayerEventEmitter('ws://localhost:5672');
 
 const albumCoverProvider = new AlbumCoverProvider(albumArtSources);
 const albumArtCreator = new AlbumArtWallpaper(options.outputPath, albumCoverProvider);
 
 const debouncedGenerateWallpaper = debounce(albumArtCreator.create, 5000);
 
-ws.onmessage = e => {
-    const data = JSON.parse(e.data);
-
-    if (data.channel === Channels.Time) {
-        return;
-    }
-
-    if (data.channel === Channels.ApiVersion && parseInt(data.payload[0]) !== 1) {
-        log.error('API Version 1.*.* supported.', data.payload, 'is not');
+desktopPlayerEventEmitter.once(Channels.ApiVersion, (versionNumber) => {
+    if (parseInt(versionNumber[0]) !== 1) {
+        log.error('API Version 1.*.* supported.', versionNumber, 'is not');
         process.exit(1);
     }
+});
 
-    if (data.channel === Channels.Track && data.payload.artist && data.payload.album) {
-        debouncedGenerateWallpaper(data);
+desktopPlayerEventEmitter.on(Channels.Track, (trackInfo) => {
+    if (!trackInfo.artist || !trackInfo.album) {
+        return;
     }
-};
+    debouncedGenerateWallpaper(trackInfo);
+});
 
 if (options.setWallpaper) {
     albumArtCreator.on('wallpaper-created', (path) => {
