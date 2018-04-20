@@ -19,7 +19,9 @@ function AlbumArtCreator(wallpaperOutputDir, albumCoverProvider) {
             }
 
             try {
-                const baseWallpaper = new Jimp(Screen.main().width, Screen.main().height);
+                let widestScreen = this._getWidestScreen();
+
+                const baseWallpaper = new Jimp(widestScreen.width, widestScreen.height);
 
                 Jimp.read(imageBuffer)
                     .then((albumArt) => {
@@ -56,6 +58,20 @@ function AlbumArtCreator(wallpaperOutputDir, albumCoverProvider) {
                 log.error('Could not generate wallpaper from downloaded image', error);
             }
         }.bind(this));
+
+        this._getWidestScreen = () => {
+            const allScreens = Screen.all();
+            let widestScreen = allScreens[0];
+            if (allScreens.length > 1) {
+                for (let i = 1; i < allScreens.length; i++) {
+                    const screen = allScreens[i];
+                    if (screen.width > widestScreen.width) {
+                        widestScreen = screen;
+                    }
+                }
+            }
+            return widestScreen;
+        }
     };
 }
 
