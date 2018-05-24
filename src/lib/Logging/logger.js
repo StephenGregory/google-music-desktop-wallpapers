@@ -5,5 +5,5 @@ module.exports = consoleLevelLogger({
     prefix: function (level) {
         return timestamp('HH:mm:ss') + '- ' + level + ' -';
     },
-    level: 'debug'
+    level: 'info'
 });
