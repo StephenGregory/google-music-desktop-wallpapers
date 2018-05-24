@@ -7,6 +7,9 @@ function MacWallpaper() {
 
     osascript.execute('tell application "System Events" to tell every desktop to get properties', function (err, allSettings) {
         if (err) {
+            if (err.toLowerCase().indexOf('application isn’t running') > -1) {
+                log.error('Could not get current wallpapers. Try restarting System Events or restarting your computer.');
+            }
             throw new Error(err);
         }
         this.existingWallpaperSettings = allSettings;
