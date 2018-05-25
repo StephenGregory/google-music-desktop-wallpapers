@@ -132,6 +132,13 @@ desktopPlayerEventEmitter.on(Channels.Track, (trackInfo) => {
     debouncedGenerateWallpaper(trackInfo);
 });
 
+desktopPlayerEventEmitter.connect();
+
+process.on('SIGINT', function () {
+    desktopPlayerEventEmitter.disconnect();
+    process.exit(0);
+});
+
 if (options.setWallpaper) {
     albumArtCreator.on('wallpaper-created', (path) => {
         wallpaper.set(path, (err) => {
