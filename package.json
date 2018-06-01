@@ -31,6 +31,8 @@
     "reconnecting-websocket": "^3.2.2",
     "request": "^2.85.0",
     "screen-info": "^1.0.1",
+    "sequelize": "^4.37.10",
+    "sqlite": "^2.9.2",
     "string-template": "^1.0.0",
     "time-stamp": "^2.0.0",
     "wallpaper": "^2.6.0",
