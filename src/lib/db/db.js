@@ -68,7 +68,7 @@ const AlbumCover = sequelize.define('album_cover',
     });
 
 Album.hasMany(TrackHistory);
-AlbumCover.hasOne(Album);
+Album.hasOne(AlbumCover);
 sequelize.sync({ force: true });
 
 module.exports = {

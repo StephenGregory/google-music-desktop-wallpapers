@@ -114,9 +114,49 @@ albumArtSources.push(GoogleAlbumArtRetriever);
 let desktopPlayerEventEmitter = new PlayerEventEmitter('ws://localhost:5672');
 
 const albumCoverProvider = new AlbumCoverProvider(albumArtSources);
-const albumArtCreator = new AlbumArtWallpaper(options.outputPath, albumCoverProvider);
+const albumArtCreator = new AlbumArtWallpaper(options.outputPath);
 
-const debouncedGenerateWallpaper = debounce(albumArtCreator.create, 5000);
+const debouncedGenerateWallpaper = debounce(foo, 5000);
+
+const fs = require('fs');
+
+const localCoverStore = './tmp/';
+if (!fs.existsSync(localCoverStore)) {
+    fs.mkdirSync(localCoverStore);
+}
+
+function foo(payload) {
+    //todo get wallpaper from db
+    //todo if wallpaper does not exist, delete from db
+
+    dbWrapper.getAlbumCover(payload.album, payload.artist, function (path) {
+        log.info('found path' + path);
+
+        if (path) {
+
+        }
+        else {
+            albumCoverProvider.getAlbumCover(payload, function (err, imageBuffer) {
+                if (err) {
+                    log.error('Could not get an image for this album', err);
+                    return;
+                }
+                const imgPath = localCoverStore + payload.artist + payload.album;
+                fs.writeFile(imgPath, imageBuffer, (err) => {
+                    if (err) {
+                        log.warn('Could not create ' + imgPath);
+                    }
+                    dbWrapper.setAlbumCover(payload.album, payload.artist, imgPath);
+                });
+                //TODO save buffer locally
+                //TODO save buffer in db
+                //albumArtCreator.create(imageBuffer);
+            });
+        }
+    })
+
+
+}
 
 desktopPlayerEventEmitter.once(Channels.ApiVersion, (versionNumber) => {
     if (parseInt(versionNumber[0]) !== 1) {
@@ -125,10 +165,15 @@ desktopPlayerEventEmitter.once(Channels.ApiVersion, (versionNumber) => {
     }
 });
 
+//TODO: delay connection to google music until db has been created
+//TODO: do not log if same track between restarts
+const dbWrapper = require('./lib/db/dbWrapper');
+
 desktopPlayerEventEmitter.on(Channels.Track, (trackInfo) => {
     if (!trackInfo.artist || !trackInfo.album) {
         return;
     }
+    dbWrapper.recordTrack(trackInfo.album, trackInfo.artist, trackInfo.title);
     debouncedGenerateWallpaper(trackInfo);
 });
 

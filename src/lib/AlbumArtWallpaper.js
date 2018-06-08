@@ -13,51 +13,45 @@ function AlbumArtCreator(wallpaperOutputDir, albumCoverProvider) {
 
     this.create = (payload) => {
 
-        albumCoverProvider.getAlbumCover(payload, function (err, imageBuffer) {
-            if (err) {
-                log.error('Could not get an image for this album', err);
-            }
+        try {
+            let widestScreen = this._getWidestScreen();
 
-            try {
-                let widestScreen = this._getWidestScreen();
+            const baseWallpaper = new Jimp(widestScreen.width, widestScreen.height);
 
-                const baseWallpaper = new Jimp(widestScreen.width, widestScreen.height);
+            Jimp.read(imageBuffer)
+                .then((albumArt) => {
+                    const focusedAlbumArt = albumArt.clone();
 
-                Jimp.read(imageBuffer)
-                    .then((albumArt) => {
-                        const focusedAlbumArt = albumArt.clone();
+                    if (JimpExtensions.isImageLarger(baseWallpaper, focusedAlbumArt)) {
+                        focusedAlbumArt.scaleToFit(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height);
+                    }
 
-                        if (JimpExtensions.isImageLarger(baseWallpaper, focusedAlbumArt)) {
-                            focusedAlbumArt.scaleToFit(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height);
-                        }
+                    const outOfFocusAlbumArt = albumArt.clone()
+                        .cover(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height)
+                        .scale(1.5)
+                        .blur(20);
 
-                        const outOfFocusAlbumArt = albumArt.clone()
-                            .cover(baseWallpaper.bitmap.width, baseWallpaper.bitmap.height)
-                            .scale(1.5)
-                            .blur(20);
+                    JimpExtensions.compositeInCenter(baseWallpaper, outOfFocusAlbumArt);
+                    JimpExtensions.compositeInCenter(baseWallpaper, focusedAlbumArt);
 
-                        JimpExtensions.compositeInCenter(baseWallpaper, outOfFocusAlbumArt);
-                        JimpExtensions.compositeInCenter(baseWallpaper, focusedAlbumArt);
+                    const destination = formatter.formatPath(this.wallpaperDestination, payload.artist, payload.album);
+                    if (!destination) {
+                        log.error('Wallpaper path after formatting was undefined. Cannot create wallpaper');
+                        return;
+                    }
 
-                        const destination = formatter.formatPath(this.wallpaperDestination, payload.artist, payload.album);
-                        if (!destination) {
-                            log.error('Wallpaper path after formatting was undefined. Cannot create wallpaper');
-                            return;
-                        }
-
-                        baseWallpaper.write(destination, () => {
-                            log.info('Wallpaper written to', destination);
-                            this.emit('wallpaper-created', destination);
-                        });
-                    })
-                    .catch((error) => {
-                        log.error('Could not generate wallpaper from downloaded image', error);
-                    })
-            }
-            catch (error) {
-                log.error('Could not generate wallpaper from downloaded image', error);
-            }
-        }.bind(this));
+                    baseWallpaper.write(destination, () => {
+                        log.info('Wallpaper written to', destination);
+                        this.emit('wallpaper-created', destination);
+                    });
+                })
+                .catch((error) => {
+                    log.error('Could not generate wallpaper from downloaded image', error);
+                })
+        }
+        catch (error) {
+            log.error('Could not generate wallpaper from downloaded image', error);
+        }
 
         this._getWidestScreen = () => {
             const allScreens = Screen.all();
