@@ -31,7 +31,7 @@ module.exports = function (consumerKey, consumerSecret) {
     const getReleasesWithValidAlbumFormat = (results) => {
         return results
             .filter(r => r.format.some(format => {
-                return ['cd', 'vinyl', 'mp3'].includes(format.toLowerCase())
+                return ['cd', 'vinyl', 'mp3', 'album', 'ep', 'lp'].includes(format.toLowerCase())
             }));
     }
 
