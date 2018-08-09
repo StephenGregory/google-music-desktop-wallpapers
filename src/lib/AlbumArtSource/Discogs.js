@@ -89,7 +89,8 @@ module.exports = function (consumerKey, consumerSecret) {
                                     return cb(new Error('No album releases found on Discogs'));
                                 }
 
-                                const validReleases = getReleasesWithValidAlbumFormat(response.results);
+                                const validReleases = getReleasesWithValidAlbumFormat(getReleasesContainingAlbumInfo(response.results,
+                                    payload.artist, payload.album));
 
                                 if (validReleases.length === 0) {
                                     return cb(new Error('No album releases found on Discogs'));
