@@ -54,8 +54,7 @@ module.exports = function (consumerKey, consumerSecret) {
                             const params = {
                                 artist: payload.artist,
                                 release_title: payload.album,
-                                type: 'release',
-                                format: 'album'
+                                type: 'release'
                             };
 
                             db.search(query, params, (error, response) => {
@@ -79,8 +78,7 @@ module.exports = function (consumerKey, consumerSecret) {
                         function findReleaseByBroadSearch(cb) {
                             const query = payload.artist + ' ' + payload.album;
                             const params = {
-                                type: 'release',
-                                format: 'album'
+                                type: 'release'
                             };
                             db.search(query, params, (error, response) => {
                                 if (error) {
