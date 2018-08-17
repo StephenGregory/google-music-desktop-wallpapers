@@ -25,7 +25,7 @@
     "console-log-level": "^1.4.0",
     "debounce": "^1.1.0",
     "disconnect": "^1.2.1",
-    "jimp": "^0.2.28",
+    "jimp": "^0.3.5",
     "node-osascript": "^2.0.0",
     "raptor-args": "^1.0.3",
     "reconnecting-websocket": "^3.2.2",
