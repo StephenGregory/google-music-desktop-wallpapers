@@ -36,6 +36,11 @@ function AlbumArtCreator(wallpaperOutputDir, albumCoverProvider) {
                             .scale(1.5)
                             .blur(20);
 
+                        outOfFocusAlbumArt.crop((outOfFocusAlbumArt.bitmap.width - baseWallpaper.bitmap.width) / 2,
+                            (outOfFocusAlbumArt.bitmap.height - baseWallpaper.bitmap.height) / 2,
+                            baseWallpaper.bitmap.width,
+                            baseWallpaper.bitmap.height);
+
                         JimpExtensions.compositeInCenter(baseWallpaper, outOfFocusAlbumArt);
                         JimpExtensions.compositeInCenter(baseWallpaper, focusedAlbumArt);
 
